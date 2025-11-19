@@ -1,0 +1,37 @@
+apiVersion: builtin
+kind: PatchTransformer
+metadata:
+  name: security-context-transformer
+patch: |-
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: not-important
+  spec:
+    template:
+      spec:
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+          fsGroup: 65534
+          seccompProfile:
+            type: RuntimeDefault
+        containers:
+        - name: not-important
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            capabilities:
+              drop:
+              - ALL
+            seccompProfile:
+              type: RuntimeDefault
+target:
+  group: apps
+  kind: Deployment
+  name: .*
+  namespace: .*

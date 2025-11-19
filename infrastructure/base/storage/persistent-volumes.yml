@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: vision-assistant-system
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "fast-ssd"
+    volume.kubernetes.io/selected-node: ""
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: fast-ssd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data
+  namespace: vision-assistant-system
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "fast-ssd"
+    volume.kubernetes.io/selected-node: ""
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: fast-ssd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-data
+  namespace: vision-assistant-system
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "standard"
+    volume.kubernetes.io/selected-node: ""
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Gi
+  storageClassName: standard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: loki-data
+  namespace: vision-assistant-system
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "standard"
+    volume.kubernetes.io/selected-node: ""
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: standard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-data
+  namespace: vision-assistant-system
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "fast-ssd"
+    volume.kubernetes.io/selected-node: ""
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: fast-ssd
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data
+  namespace: vision-assistant-system
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "fast-ssd"
+    volume.kubernetes.io/selected-node: ""
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: fast-ssd

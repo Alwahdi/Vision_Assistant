@@ -1,0 +1,44 @@
+# Core dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+python-multipart==0.0.6
+
+# HTTP client
+httpx==0.25.2
+aiohttp==3.9.1
+
+# Database
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+alembic==1.13.1
+
+# Redis
+redis==5.0.1
+
+# Computer Vision
+opencv-python-headless==4.8.1.78
+Pillow==10.1.0
+scikit-image==0.22.0
+
+# AI/ML (CPU versions for compatibility)
+torch==2.1.0
+torchvision==0.16.0
+transformers==4.35.2
+
+# Utilities
+python-dotenv==1.0.0
+pydantic-settings==2.1.0
+prometheus-client==0.19.0
+structlog==23.2.0
+starlette==0.27.0
+
+# Development dependencies
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+black==23.11.0
+isort==5.12.0
+mypy==1.7.1
+pre-commit==3.5.0
+ruff==0.1.0

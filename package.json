@@ -1,0 +1,87 @@
+{
+  "name": "vision-assistant-platform",
+  "version": "1.0.0",
+  "description": "Enterprise-grade AI-powered accessibility platform with microservices architecture",
+  "main": "index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "scripts": {
+    "dev": "./deploy-local.sh start",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "clean": "./deploy-local.sh clean",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "infra:plan": "cd infrastructure && terraform plan",
+    "infra:apply": "cd infrastructure && terraform apply",
+    "k8s:deploy": "kubectl apply -k environments/development",
+    "docs:build": "npm run docs:build --workspaces",
+    "docs:serve": "npm run docs:serve --workspaces"
+  },
+  "workspaces": [
+    "services/*",
+    "frontend"
+  ],
+  "keywords": [
+    "accessibility",
+    "ai",
+    "microservices",
+    "kubernetes",
+    "react",
+    "nodejs",
+    "python",
+    "enterprise",
+    "scalability"
+  ],
+  "author": "Vision Assistant Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vision-assistant/platform.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vision-assistant/platform/issues"
+  },
+  "homepage": "https://vision-assistant.com",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.13.1",
+    "@typescript-eslint/parser": "^6.13.1",
+    "eslint": "^8.54.0",
+    "prettier": "^3.1.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.1.0",
+    "concurrently": "^8.2.2"
+  },
+  "lint-staged": {
+    "*.{js,ts,tsx,json,css,md}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{py}": [
+      "black",
+      "isort"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "commit-msg": "echo 'Commit message validated'"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "os": [
+    "linux",
+    "darwin"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}

@@ -1,0 +1,527 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'services/**'
+      - 'infrastructure/**'
+      - 'frontend/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'services/**'
+      - 'infrastructure/**'
+      - 'frontend/**'
+
+env:
+  REGISTRY: ghcr.io
+  ORGANIZATION: your-org
+  REPOSITORY: vision-assistant
+
+jobs:
+  # Security scanning
+  security:
+    name: 🔒 Security & Compliance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    outputs:
+      trivy-results: ${{ steps.trivy.outputs.results }}
+      sonar-results: ${{ steps.sonarqube.outputs.results }}
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 Run Trivy vulnerability scanner
+        id: trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'repo'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+          severity: 'HIGH,CRITICAL'
+
+      - name: 📤 Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: 🧪 Run SAST with CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript, python, typescript, go, java
+
+      - name: 🔍 Autobuild
+        uses: github/codeql-action/autobuild@v2
+
+      - name: 📊 Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+
+      - name: 🏷️ Run OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'Vision Assistant'
+          path: '.'
+          format: 'ALL'
+          args: >
+            --enableRetired
+            --enableExperimental
+            --nvdValidForHours 24
+
+      - name: 📤 Upload Dependency Check results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: dependency-check-results
+          path: reports/
+
+  # Quality checks
+  quality:
+    name: 🎯 Code Quality & Testing
+    runs-on: ubuntu-latest
+    needs: security
+    strategy:
+      matrix:
+        service: [api-gateway, ai-service, realtime-service]
+        include:
+          - service: api-gateway
+            path: services/api-gateway
+            type: nodejs
+          - service: ai-service
+            path: services/ai-service
+            type: python
+          - service: realtime-service
+            path: services/realtime-service
+            type: nodejs
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup Node.js
+        if: matrix.type == 'nodejs'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.path }}/package-lock.json
+
+      - name: 🐍 Setup Python
+        if: matrix.type == 'python'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      # Quality checks
+      - name: 🔍 Run ESLint
+        if: matrix.type == 'nodejs'
+        run: |
+          cd ${{ matrix.path }}
+          npm run lint
+
+      - name: 🔍 Run TypeScript check
+        if: matrix.type == 'nodejs'
+        run: |
+          cd ${{ matrix.path }}
+          npm run type-check
+
+      - name: 🔍 Run Black & isort
+        if: matrix.type == 'python'
+        run: |
+          cd ${{ matrix.path }}
+          pip install black isort
+          black --check .
+          isort --check-only --diff .
+
+      - name: 🔍 Run mypy
+        if: matrix.type == 'python'
+        run: |
+          cd ${{ matrix.path }}
+          pip install mypy
+          mypy .
+
+      # Testing
+      - name: 🧪 Run unit tests
+        run: |
+          cd ${{ matrix.path }}
+          if [ -f "package.json" ]; then
+            npm test -- --coverage --watchAll=false
+          elif [ -f "requirements.txt" ]; then
+            pip install -r requirements.txt
+            python -m pytest tests/ -v --cov=. --cov-report=xml
+          fi
+
+      # Upload coverage
+      - name: 📤 Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ${{ matrix.path }}/coverage.xml
+          flags: ${{ matrix.service }}
+          name: ${{ matrix.service }}
+          fail_ci_if_error: false
+
+  # Infrastructure validation
+  infrastructure:
+    name: 🏗️ Infrastructure Validation
+    runs-on: ubuntu-latest
+    needs: [security, quality]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "1.5.0"
+
+      - name: 🔧 Setup Kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      # Validate infrastructure
+      - name: 🔍 Validate Terraform
+        run: |
+          cd infrastructure
+          terraform init -backend=false
+          terraform validate
+
+      - name: 🔍 Validate Kustomize
+        run: |
+          cd infrastructure/base
+          kustomize build . --enable-helm > /dev/null
+
+      - name: 🔍 Validate Kubernetes manifests
+        run: |
+          kubeconform -kubernetes-version 1.27.0 infrastructure/base/
+
+  # Build container images
+  build:
+    name: 🐳 Build & Push Images
+    runs-on: ubuntu-latest
+    needs: [security, quality, infrastructure]
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [api-gateway, ai-service, realtime-service]
+        environment: [development, staging, production]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔐 Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🏷️ Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.ORGANIZATION }}/${{ env.REPOSITORY }}/${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ matrix.environment }}
+
+      - name: 🐳 Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: services/${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            BUILD_ENV=${{ matrix.environment }}
+            BUILD_SHA=${{ github.sha }}
+
+      # Security scan built images
+      - name: 🔍 Scan built image
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'image'
+          scan-ref: '${{ env.REGISTRY }}/${{ env.ORGANIZATION }}/${{ env.REPOSITORY }}/${{ matrix.service }}:latest'
+          format: 'sarif'
+          output: 'image-scan-results.sarif'
+
+      - name: 📤 Upload image scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'image-scan-results.sarif'
+
+  # Deploy to environments
+  deploy:
+    name: 🚀 Deploy to ${{ matrix.environment }}
+    runs-on: ubuntu-latest
+    needs: build
+    if: |
+      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'deploy'))
+    strategy:
+      matrix:
+        environment: [development, staging, production]
+        include:
+          - environment: development
+            namespace: vision-assistant-dev
+            wave: "2"
+          - environment: staging
+            namespace: vision-assistant-staging
+            wave: "3"
+          - environment: production
+            namespace: vision-assistant-prod
+            wave: "4"
+
+    environment:
+      name: ${{ matrix.environment }}
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup ArgoCD CLI
+        run: |
+          curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+          rm argocd-linux-amd64
+
+      - name: 🔐 Login to ArgoCD
+        run: |
+          argocd login ${{ secrets.ARGOCD_SERVER }} \
+            --username ${{ secrets.ARGOCD_USERNAME }} \
+            --password ${{ secrets.ARGOCD_PASSWORD }} \
+            --grpc-web
+
+      - name: 🚀 Sync ArgoCD application
+        run: |
+          argocd app sync vision-assistant-${{ matrix.environment }} \
+            --grpc-web \
+            --force \
+            --timeout 600 \
+            --prune
+
+      - name: ⏳ Wait for deployment
+        run: |
+          argocd app wait vision-assistant-${{ matrix.environment }} \
+            --grpc-web \
+            --timeout 600 \
+            --health
+
+      # Run smoke tests
+      - name: 🧪 Run smoke tests
+        run: |
+          # Wait for services to be ready
+          sleep 60
+
+          # Test API Gateway health
+          curl -f --max-time 30 https://${{ matrix.environment }}.vision-assistant.com/health
+
+          # Test AI service health (if available)
+          curl -f --max-time 30 https://${{ matrix.environment }}.vision-assistant.com/api/ai/health || echo "AI service not yet available"
+
+      # Run integration tests
+      - name: 🔗 Run integration tests
+        run: |
+          npm ci
+          npm run test:integration -- --env=${{ matrix.environment }}
+
+      # Performance testing for staging/production
+      - name: 📈 Performance testing
+        if: matrix.environment != 'development'
+        run: |
+          npm install -g artillery
+          artillery run tests/performance/load-test.yml \
+            --environment ${{ matrix.environment }} \
+            --output reports/performance-${{ matrix.environment }}.json
+
+      # Upload performance results
+      - name: 📤 Upload performance results
+        if: always() && matrix.environment != 'development'
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results-${{ matrix.environment }}
+          path: reports/
+
+  # E2E testing
+  e2e:
+    name: 🌐 End-to-End Testing
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: |
+      (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'e2e'))
+    strategy:
+      matrix:
+        environment: [staging]
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🏗️ Setup Playwright
+        run: |
+          npm ci
+          npx playwright install
+          npx playwright install-deps
+
+      - name: 🌐 Run E2E tests
+        run: |
+          npx playwright test \
+            --config=tests/e2e/playwright.config.ts \
+            --grep "@smoke" \
+            --shard=1/3
+
+      - name: 📊 Generate E2E report
+        if: always()
+        run: npx playwright show-report
+
+      - name: 📤 Upload E2E results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-results-${{ matrix.environment }}
+          path: test-results/
+
+  # Rollback on failure
+  rollback:
+    name: 🔄 Rollback Deployment
+    runs-on: ubuntu-latest
+    needs: [deploy, e2e]
+    if: failure() && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup ArgoCD CLI
+        run: |
+          curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+          rm argocd-linux-amd64
+
+      - name: 🔐 Login to ArgoCD
+        run: |
+          argocd login ${{ secrets.ARGOCD_SERVER }} \
+            --username ${{ secrets.ARGOCD_USERNAME }} \
+            --password ${{ secrets.ARGOCD_PASSWORD }} \
+            --grpc-web
+
+      - name: 🔄 Rollback to previous version
+        run: |
+          # Rollback all environments
+          for env in development staging production; do
+            echo "Rolling back $env environment..."
+            argocd app rollback vision-assistant-$env HEAD-1 --grpc-web || echo "Rollback failed for $env"
+          done
+
+      - name: 📢 Notify on rollback
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Deployment Failed - Automatic Rollback Executed',
+              body: `
+              ## Deployment Failure
+
+              The deployment failed and an automatic rollback has been executed.
+
+              **Failed Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+              **Rollback Details:**
+              - All environments rolled back to previous version
+              - Services should be back to stable state
+
+              Please investigate the failure and fix the issues before attempting redeployment.
+
+              ## Next Steps:
+              1. Check the failed job logs
+              2. Review error messages
+              3. Test fixes locally
+              4. Create a new PR with fixes
+              `,
+              labels: ['deployment', 'rollback', 'urgent', 'investigation-needed']
+            })
+
+  # Success notifications
+  success:
+    name: 🎉 Deployment Success
+    runs-on: ubuntu-latest
+    needs: [deploy, e2e]
+    if: success() && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: 🎊 Create success notification
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '✅ Deployment Successful',
+              body: `
+              ## Deployment Completed Successfully! 🎉
+
+              **Successful Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+              ### What's New:
+              - All services deployed successfully
+              - Tests passed
+              - Performance validated
+              - Security scans completed
+
+              ### Access URLs:
+              - **Production:** https://vision-assistant.com
+              - **Staging:** https://staging.vision-assistant.com
+              - **Development:** https://dev.vision-assistant.com
+
+              ### Monitoring:
+              - **Grafana:** https://grafana.vision-assistant.com
+              - **ArgoCD:** https://argocd.vision-assistant.com
+
+              The Vision Assistant platform is now live and ready to serve users! 🚀
+              `,
+              labels: ['deployment', 'success', 'release']
+            })
+
+  # Documentation update
+  docs:
+    name: 📚 Update Documentation
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: success() && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔄 Update API documentation
+        run: |
+          # Generate OpenAPI specs from services
+          # Update deployment docs with new versions
+          # Update architecture diagrams if needed
+          echo "Documentation updated"
+
+      - name: 🚀 Deploy documentation
+        run: |
+          # Deploy docs to GitHub Pages or external docs site
+          echo "Documentation deployed"

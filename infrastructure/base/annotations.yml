@@ -1,0 +1,34 @@
+apiVersion: builtin
+kind: AnnotationsTransformer
+metadata:
+  name: annotations-transformer
+annotations:
+  kubectl.kubernetes.io/restartedAt: ""
+  config.kubernetes.io/local-config: "true"
+  app.kubernetes.io/created-by: vision-assistant-platform
+  app.kubernetes.io/last-applied-configuration: ""
+fieldSpecs:
+  - path: metadata/annotations
+    create: true
+    group: apps
+    kind: Deployment
+  - path: metadata/annotations
+    create: true
+    group: ""
+    kind: Service
+  - path: metadata/annotations
+    create: true
+    group: ""
+    kind: ConfigMap
+  - path: metadata/annotations
+    create: true
+    group: ""
+    kind: Secret
+  - path: metadata/annotations
+    create: true
+    group: networking.k8s.io
+    kind: Ingress
+  - path: metadata/annotations
+    create: true
+    group: networking.istio.io
+    kind: VirtualService

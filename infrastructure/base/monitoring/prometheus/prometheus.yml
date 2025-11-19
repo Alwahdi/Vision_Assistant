@@ -1,0 +1,81 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: vision-assistant-prometheus
+  namespace: vision-assistant-system
+  labels:
+    app: prometheus
+    prometheus: vision-assistant
+spec:
+  replicas: 2
+  retention: 30d
+  retentionSize: 50GB
+  serviceAccountName: prometheus
+  serviceMonitorSelector:
+    matchLabels:
+      team: vision-assistant
+  ruleSelector:
+    matchLabels:
+      team: vision-assistant
+      prometheus: vision-assistant
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  resources:
+    requests:
+      memory: 400Mi
+      cpu: 100m
+    limits:
+      memory: 2Gi
+      cpu: 1000m
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: fast-ssd
+        resources:
+          requests:
+            storage: 50Gi
+  additionalScrapeConfigs:
+    name: additional-scrape-configs
+    key: prometheus-additional.yaml
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: vision-assistant-alerts
+  namespace: vision-assistant-system
+  labels:
+    team: vision-assistant
+    prometheus: vision-assistant
+spec:
+  groups:
+  - name: vision_assistant_alerts
+    rules:
+    - alert: ServiceDown
+      expr: up == 0
+      for: 5m
+      labels:
+        severity: critical
+        category: availability
+      annotations:
+        summary: "Service {{ $labels.job }} is down"
+        description: "{{ $labels.job }} has been down for more than 5 minutes."
+    - alert: HighErrorRate
+      expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+      for: 5m
+      labels:
+        severity: critical
+        category: reliability
+      annotations:
+        summary: "High error rate on {{ $labels.service }}"
+        description: "Error rate > 5% for {{ $labels.service }}"
+    - alert: HighLatency
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+      for: 5m
+      labels:
+        severity: warning
+        category: performance
+      annotations:
+        summary: "High response time on {{ $labels.service }}"
+        description: "95th percentile response time > 2s"

@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vision-assistant-production
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: vision-assistant
+    app.kubernetes.io/component: environment
+    environment: production
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: Prune=true,Validate=true
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-org/vision-assistant-infrastructure
+    targetRevision: HEAD
+    path: environments/production
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vision-assistant-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+      - Validate=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 20

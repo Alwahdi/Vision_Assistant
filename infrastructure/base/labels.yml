@@ -1,0 +1,38 @@
+apiVersion: builtin
+kind: LabelTransformer
+metadata:
+  name: labels-transformer
+labels:
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/part-of: vision-assistant-system
+  security.kubernetes.io/sa-token-automount: "false"
+  app.kubernetes.io/created-by: vision-assistant-platform
+fieldSpecs:
+  - path: metadata/labels
+    create: true
+    group: apps
+    kind: Deployment
+  - path: metadata/labels
+    create: true
+    group: ""
+    kind: Service
+  - path: metadata/labels
+    create: true
+    group: ""
+    kind: ConfigMap
+  - path: metadata/labels
+    create: true
+    group: ""
+    kind: Secret
+  - path: metadata/labels
+    create: true
+    group: networking.k8s.io
+    kind: Ingress
+  - path: metadata/labels
+    create: true
+    group: networking.istio.io
+    kind: VirtualService
+  - path: spec/selector/matchLabels
+    create: true
+    group: apps
+    kind: Deployment

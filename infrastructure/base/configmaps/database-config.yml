@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: database-config
+data:
+  # PostgreSQL Settings
+  POSTGRES_DB: "vision_assistant"
+  POSTGRES_USER: "vision_user"
+  POSTGRES_PASSWORD: "vision_password"
+  POSTGRES_HOST: "postgres-service"
+  POSTGRES_PORT: "5432"
+  POSTGRES_SSL_MODE: "require"
+  POSTGRES_MAX_CONNECTIONS: "20"
+  POSTGRES_IDLE_TIMEOUT: "300"
+  POSTGRES_CONNECTION_TIMEOUT: "60000"
+
+  # Connection Pool Settings
+  DB_POOL_MIN: "2"
+  DB_POOL_MAX: "20"
+  DB_POOL_IDLE_TIMEOUT: "30000"
+  DB_POOL_ACQUIRE_TIMEOUT: "60000"
+
+  # Redis Settings
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: ""
+  REDIS_DB: "0"
+  REDIS_TLS: "true"
+  REDIS_CONNECT_TIMEOUT: "5000"
+  REDIS_COMMAND_TIMEOUT: "5000"
+  REDIS_MAX_RETRIES: "3"
+  REDIS_RETRY_DELAY: "100"
+
+  # Redis Cluster Settings (for production)
+  REDIS_CLUSTER_ENABLED: "false"
+  REDIS_CLUSTER_NODES: "redis-cluster-0:6379,redis-cluster-1:6379,redis-cluster-2:6379"
+
+  # Database Migration
+  DB_MIGRATION_ENABLED: "true"
+  DB_MIGRATION_PATH: "/app/migrations"
+  DB_MIGRATION_TIMEOUT: "300"
+
+  # Database Backup
+  DB_BACKUP_ENABLED: "true"
+  DB_BACKUP_SCHEDULE: "0 2 * * *"
+  DB_BACKUP_RETENTION: "30"
+  DB_BACKUP_COMPRESSION: "gzip"
+
+  # Database Monitoring
+  DB_MONITORING_ENABLED: "true"
+  DB_SLOW_QUERY_THRESHOLD: "1000"
+  DB_CONNECTION_MONITORING: "true"
+  DB_PERFORMANCE_MONITORING: "true"
+
+  # PostgreSQL Extensions
+  POSTGRES_EXTENSIONS: "uuid-ossp,postgis,pg_stat_statements"
+
+  # Database Schema
+  DB_SCHEMA_VERSION: "1.0.0"
+  DB_SCHEMA_VALIDATION: "strict"
+
+  # Read Replicas (for production)
+  DB_READ_REPLICAS_ENABLED: "false"
+  DB_READ_REPLICAS_COUNT: "2"
+  DB_READ_REPLICAS_LOAD_BALANCE: "round_robin"

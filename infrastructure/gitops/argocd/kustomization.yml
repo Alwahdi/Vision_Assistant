@@ -1,0 +1,54 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - applications/
+  - projects/
+
+# Common labels
+commonLabels:
+  app.kubernetes.io/component: argocd
+  app.kubernetes.io/part-of: vision-assistant-gitops
+
+# ConfigMap for ArgoCD settings
+configMapGenerator:
+  - name: argocd-cm
+    namespace: argocd
+    literals:
+      - timeout.reconciliation=300s
+      - controller.repo.server.timeout.seconds=300
+      - controller.status.processors=50
+      - controller.operation.processors=25
+      - controller.self.heal.timeout.seconds=300
+      - server.repo.server.plaintext=true
+      - server.repo.server.strict.tls=false
+
+  - name: argocd-rbac-cm
+    namespace: argocd
+    literals:
+      - policy.csv= |
+          g, argocd-admin, role:admin
+          g, vision-assistant-dev, role:developer
+          g, vision-assistant-prod, role:readonly
+          p, role:developer, applications, get, vision-assistant-dev/*, allow
+          p, role:developer, applications, sync, vision-assistant-dev/*, allow
+          p, role:developer, applications, update, vision-assistant-dev/*, allow
+          p, role:readonly, applications, get, vision-assistant-prod/*, allow
+          p, role:admin, *, *, *, allow
+
+# Secret for ArgoCD repositories
+secretGenerator:
+  - name: argocd-secret
+    namespace: argocd
+    type: Opaque
+    literals:
+      - repos.yaml= |
+          - type: git
+            url: https://github.com/your-org/vision-assistant-infrastructure
+            name: vision-assistant-infrastructure
+          - type: git
+            url: https://github.com/your-org/vision-assistant-services
+            name: vision-assistant-services
+          - type: git
+            url: https://github.com/your-org/vision-assistant-frontend
+            name: vision-assistant-frontend

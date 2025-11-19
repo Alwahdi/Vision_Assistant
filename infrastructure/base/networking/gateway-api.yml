@@ -1,0 +1,78 @@
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
+metadata:
+  name: vision-assistant-gateway
+  namespace: vision-assistant-system
+spec:
+  gatewayClassName: istio
+  listeners:
+  - name: http
+    hostname: "*.vision-assistant.com"
+    port: 80
+    protocol: HTTP
+  - name: https
+    hostname: "*.vision-assistant.com"
+    port: 443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: vision-assistant-tls
+        kind: Secret
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: api-gateway-route
+  namespace: vision-assistant-system
+spec:
+  parentRefs:
+  - name: vision-assistant-gateway
+    namespace: vision-assistant-system
+  hostnames:
+  - "api.vision-assistant.com"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: api-gateway
+      port: 80
+      weight: 100
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: frontend-route
+  namespace: vision-assistant-system
+spec:
+  parentRefs:
+  - name: vision-assistant-gateway
+    namespace: vision-assistant-system
+  hostnames:
+  - "app.vision-assistant.com"
+  - "vision-assistant.com"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: frontend
+      port: 80
+      weight: 100
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api
+    filters:
+    - type: URLRewrite
+      urlRewrite:
+        path:
+          type: ReplacePrefixMatch
+          replacePrefixMatch: /
+    backendRefs:
+    - name: api-gateway
+      port: 80
+      weight: 100

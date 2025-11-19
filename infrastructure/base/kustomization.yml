@@ -1,0 +1,80 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: vision-assistant-base
+  namespace: vision-assistant-system
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: vision-assistant
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/part-of: vision-assistant-system
+  environment: base
+
+# Common annotations
+commonAnnotations:
+  app.kubernetes.io/version: "1.0.0"
+  app.kubernetes.io/component: infrastructure
+  config.kubernetes.io/local-config: "true"
+
+# Namespace for the application
+namespace: vision-assistant-system
+
+# Resources to include
+resources:
+  - namespace.yml
+  - configmaps/
+  - secrets/
+  - storage/
+  - networking/
+  - monitoring/
+
+# Patches for different environments
+patchesStrategicMerge: []
+
+# ConfigMap Generator
+configMapGenerator:
+  - name: vision-assistant-config
+    namespace: vision-assistant-system
+    options:
+      disableNameSuffixHash: true
+    literals:
+      - APP_NAME=Vision Assistant
+      - APP_VERSION=1.0.0
+      - LOG_LEVEL=info
+      - METRICS_ENABLED=true
+      - TRACING_ENABLED=true
+      - HEALTH_CHECK_ENABLED=true
+
+# Secret Generator (external-secrets will populate these)
+secretGenerator:
+  - name: vision-assistant-secrets
+    namespace: vision-assistant-system
+    options:
+      disableNameSuffixHash: true
+    type: Opaque
+    literals:
+      - database-url-placeholder=postgresql://user:pass@host:5432/db
+      - redis-url-placeholder=redis://host:6379
+      - jwt-secret-placeholder=your-jwt-secret-here
+      - api-keys-placeholder=api-keys-here
+
+# Images for all services
+images:
+  - name: vision-assistant/api-gateway
+    newTag: latest
+  - name: vision-assistant/ai-service
+    newTag: latest
+  - name: vision-assistant/realtime-service
+    newTag: latest
+  - name: vision-assistant/user-service
+    newTag: latest
+
+# Transformers for security and best practices
+transformers:
+  - labels.yml
+  - annotations.yml
+  - security-context.yml

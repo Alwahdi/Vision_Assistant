@@ -1,0 +1,53 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Vision Assistant Services
+  - job_name: 'api-gateway'
+    static_configs:
+      - targets: ['vision-assistant-api-gateway:3000']
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+
+  - job_name: 'ai-service'
+    static_configs:
+      - targets: ['vision-assistant-ai-service:8000']
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+
+  - job_name: 'realtime-service'
+    static_configs:
+      - targets: ['vision-assistant-realtime-service:3001']
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+
+  # Infrastructure Monitoring
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['vision-assistant-node-exporter:9100']
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['vision-assistant-cadvisor:8080']
+    scrape_interval: 30s
+
+  # Databases
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['vision-assistant-postgres:5432']
+    scrape_interval: 30s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['vision-assistant-redis:6379']
+    scrape_interval: 30s

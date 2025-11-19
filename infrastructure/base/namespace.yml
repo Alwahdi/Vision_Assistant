@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vision-assistant-system
+  labels:
+    name: vision-assistant-system
+    app.kubernetes.io/name: vision-assistant
+    app.kubernetes.io/component: system
+    istio-injection: enabled
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    security.kubernetes.io/sa-token-automount: "false"
+  annotations:
+    # Resource Quotas
+    resourcequota.cpu: "4000m"
+    resourcequota.memory: "8Gi"
+    resourcequota.pods: "100"
+    resourcequota.services: "50"
+    resourcequota.configmaps: "200"
+    resourcequota.secrets: "200"
+    resourcequota.persistentvolumeclaims: "20"
+
+    # Network Policies
+    net.beta.kubernetes.io/network-policy: "true"
+
+    # Istio
+    kubectl.kubernetes.io/restartedAt: "2024-01-01T00:00:00Z"
+
+    # Security
+    seccomp.security.alpha.kubernetes.io/pod: runtime/default
+    apparmor.security.beta.kubernetes.io/pod: runtime/default
+
+spec: {}
+
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compute-quota
+  namespace: vision-assistant-system
+spec:
+  hard:
+    requests.cpu: "1000m"
+    requests.memory: 2Gi
+    limits.cpu: "4000m"
+    limits.memory: 8Gi
+    pods: "100"
+    services: "50"
+    configmaps: "200"
+    secrets: "200"
+    persistentvolumeclaims: "20"
+
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: container-limits
+  namespace: vision-assistant-system
+spec:
+  limits:
+  - default:
+      cpu: "500m"
+      memory: 512Mi
+    defaultRequest:
+      cpu: "100m"
+      memory: 128Mi
+    type: Container
+
+---
+# Network Policy - Default Deny All
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: vision-assistant-system
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+
+---
+# Network Policy - Allow DNS
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: vision-assistant-system
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 53

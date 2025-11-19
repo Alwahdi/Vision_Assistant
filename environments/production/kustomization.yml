@@ -1,0 +1,76 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: vision-assistant-production
+  namespace: vision-assistant-prod
+
+# Base configuration
+bases:
+  - ../base
+
+# Environment-specific patches
+patchesStrategicMerge:
+  - patches/namespace.yml
+  - patches/configmaps.yml
+  - patches/deployments.yml
+  - patches/security.yml
+
+# Production labels
+commonLabels:
+  environment: production
+  team: platform
+  criticality: high
+
+# Higher resource limits for production
+patches:
+  - target:
+      kind: LimitRange
+      name: container-limits
+    patch: |-
+      - op: replace
+        path: /spec/limits/0/default/cpu
+        value: "2000m"
+      - op: replace
+        path: /spec/limits/0/default/memory
+        value: 2Gi
+      - op: replace
+        path: /spec/limits/0/defaultRequest/cpu
+        value: "500m"
+      - op: replace
+        path: /spec/limits/0/defaultRequest/memory
+        value: 512Mi
+
+# Production ConfigMap overrides
+configMapGenerator:
+  - name: app-config
+    behavior: replace
+    literals:
+      - APP_ENVIRONMENT=production
+      - LOG_LEVEL=warn
+      - METRICS_ENABLED=true
+      - TRACING_ENABLED=true
+      - DEBUG_MODE=false
+      - AUDIT_ENABLED=true
+      - COMPLIANCE_MODE=strict
+
+# Production secrets (external-secrets will populate)
+secretGenerator:
+  - name: app-secrets
+    behavior: replace
+    type: Opaque
+    literals:
+      - JWT_SECRET_PLACEHOLDER=production-jwt-secret
+      - DB_PASSWORD_PLACEHOLDER=production-db-password
+      - REDIS_PASSWORD_PLACEHOLDER=production-redis-password
+
+# Production images (with specific tags)
+images:
+  - name: vision-assistant/api-gateway
+    newTag: "v1.0.0-prod"
+  - name: vision-assistant/ai-service
+    newTag: "v1.0.0-prod"
+  - name: vision-assistant/realtime-service
+    newTag: "v1.0.0-prod"
+  - name: vision-assistant/user-service
+    newTag: "v1.0.0-prod"

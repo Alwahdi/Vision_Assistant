@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: security-config
+data:
+  # SSL/TLS Settings
+  SSL_ENABLED: "true"
+  SSL_PROTOCOL: "TLSv1.3"
+  SSL_CIPHERS: "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256"
+  SSL_CERT_PATH: "/etc/ssl/certs/vision-assistant.crt"
+  SSL_KEY_PATH: "/etc/ssl/private/vision-assistant.key"
+
+  # Certificate Management
+  CERT_MANAGER_ENABLED: "true"
+  CERT_MANAGER_ISSUER: "letsencrypt-prod"
+  CERT_MANAGER_EMAIL: "security@vision-assistant.com"
+  CERT_MANAGER_DOMAINS: "vision-assistant.com,*.vision-assistant.com"
+
+  # Authentication
+  AUTH_ENABLED: "true"
+  AUTH_PROVIDERS: "local,oauth"
+  AUTH_SESSION_TIMEOUT: "3600"
+  AUTH_MAX_LOGIN_ATTEMPTS: "5"
+  AUTH_LOCKOUT_DURATION: "900"
+
+  # Authorization
+  AUTHZ_ENABLED: "true"
+  AUTHZ_MODEL: "rbac"
+  AUTHZ_CACHE_ENABLED: "true"
+  AUTHZ_CACHE_TTL: "300"
+
+  # Encryption
+  ENCRYPTION_ENABLED: "true"
+  ENCRYPTION_ALGORITHM: "AES-256-GCM"
+  ENCRYPTION_KEY_ROTATION: "90"
+  ENCRYPTION_BACKUP_ENABLED: "true"
+
+  # API Security
+  API_RATE_LIMITING: "true"
+  API_THROTTLING_ENABLED: "true"
+  API_CORS_ENABLED: "true"
+  API_HSTS_ENABLED: "true"
+  API_CSP_ENABLED: "true"
+
+  # Network Security
+  NETWORK_POLICY_ENABLED: "true"
+  NETWORK_POLICY_DEFAULT_DENY: "true"
+  NETWORK_POLICY_DNS_ALLOWED: "true"
+
+  # Container Security
+  CONTAINER_SECURITY_ENABLED: "true"
+  CONTAINER_READONLY_ROOT: "true"
+  CONTAINER_NON_ROOT_USER: "true"
+  CONTAINER_DROP_CAPABILITIES: "true"
+  CONTAINER_SECCOMP_PROFILE: "runtime/default"
+
+  # Secrets Management
+  SECRETS_EXTERNAL_ENABLED: "true"
+  SECRETS_PROVIDER: "aws-secretsmanager"
+  SECRETS_ROTATION_ENABLED: "true"
+  SECRETS_BACKUP_ENABLED: "true"
+
+  # Audit Logging
+  AUDIT_ENABLED: "true"
+  AUDIT_LOG_LEVEL: "detailed"
+  AUDIT_RETENTION_PERIOD: "365"
+  AUDIT_COMPLIANCE: "gdpr,sox"
+
+  # Vulnerability Scanning
+  VULN_SCANNING_ENABLED: "true"
+  VULN_SCANNING_SCHEDULE: "daily"
+  VULN_SCANNING_SEVERITY: "high,critical"
+  VULN_SCANNING_FAIL_BUILD: "true"
+
+  # Compliance
+  COMPLIANCE_GDPR_ENABLED: "true"
+  COMPLIANCE_HIPAA_ENABLED: "false"
+  COMPLIANCE_SOC2_ENABLED: "true"
+  COMPLIANCE_WCAG_ENABLED: "true"
+
+  # Incident Response
+  INCIDENT_RESPONSE_ENABLED: "true"
+  INCIDENT_RESPONSE_ESCALATION: "email,pager,sms"
+  INCIDENT_RESPONSE_TIMEOUT: "300"
+  INCIDENT_RESPONSE_AUTO_RESOLVE: "false"
+
+  # Backup Security
+  BACKUP_ENCRYPTION_ENABLED: "true"
+  BACKUP_ACCESS_CONTROL: "strict"
+  BACKUP_AUDIT_ENABLED: "true"
+  BACKUP_RETENTION_ENCRYPTED: "true"
+
+  # Zero Trust
+  ZERO_TRUST_ENABLED: "true"
+  ZERO_TRUST_MTLS: "strict"
+  ZERO_TRUST_IDENTITY_PROVIDER: "keycloak"
+  ZERO_TRUST_DEVICE_TRUST: "required"

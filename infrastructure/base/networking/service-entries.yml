@@ -1,0 +1,67 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: external-apis
+  namespace: vision-assistant-system
+spec:
+  hosts:
+  - api.openai.com
+  - api.anthropic.com
+  - vision.googleapis.com
+  - api.clarifai.com
+  - oauth2.googleapis.com
+  - appleid.apple.com
+  ports:
+  - number: 443
+    name: https
+    protocol: HTTPS
+  resolution: DNS
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: external-databases
+  namespace: vision-assistant-system
+spec:
+  hosts:
+  - vision-assistant-postgres.external.com
+  - vision-assistant-redis.external.com
+  ports:
+  - number: 5432
+    name: postgres
+    protocol: TCP
+  - number: 6379
+    name: redis
+    protocol: TCP
+  resolution: DNS
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: monitoring-endpoints
+  namespace: vision-assistant-system
+spec:
+  hosts:
+  - sentry.io
+  - datadog.com
+  - rollbar.com
+  ports:
+  - number: 443
+    name: https
+    protocol: HTTPS
+  resolution: DNS
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: cdn-endpoints
+  namespace: vision-assistant-system
+spec:
+  hosts:
+  - cdn.vision-assistant.com
+  - assets.vision-assistant.com
+  ports:
+  - number: 443
+    name: https
+    protocol: HTTPS
+  resolution: DNS
